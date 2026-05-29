@@ -148,7 +148,7 @@ def build_doc():
     doc.add_paragraph()
     version = doc.add_paragraph()
     version.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run4 = version.add_run(f"Documentação Técnica Completa — Versão 3.0 | {datetime.date.today().strftime('%B %Y')}")
+    run4 = version.add_run(f"Documentação Técnica Completa — Versão 3.1 | {datetime.date.today().strftime('%B %Y')}")
     run4.font.size = Pt(10)
     run4.font.color.rgb = RGBColor(100, 100, 100)
 
@@ -159,7 +159,7 @@ def build_doc():
     toc_items = [
         ("1",  "Visão Geral do Projeto"),
         ("2",  "O que Mudou: SonecaBot → Companion Tibia"),
-        ("3",  "O que Foi Implementado (v3.0)"),
+        ("3",  "O que Foi Implementado (v3.1)"),
         ("4",  "O que Ainda Falta Implementar"),
         ("5",  "Arquitetura Técnica"),
         ("6",  "Índice de Arquivos — O que é cada coisa"),
@@ -172,7 +172,9 @@ def build_doc():
         ("13", "Problemas Conhecidos e Limitações"),
         ("14", "Roadmap — Próximas Versões"),
         ("15", "O que vai para o GitHub — e o que NÃO vai"),
-        ("16", "Simulações — 10 Exemplos de Uso Real (com resultados)"),
+        ("16", "Simulacoes — 10 Exemplos de Uso Real (com resultados)"),
+        ("17", "KB no GitHub — Como funciona e como atualizar"),
+        ("18", "Historico de Commits e Versoes"),
     ]
     for num, title_text in toc_items:
         p = doc.add_paragraph(f"  {num}. {title_text}")
@@ -253,7 +255,7 @@ def build_doc():
     doc.add_page_break()
 
     # ── SEÇÃO 3: O QUE FOI IMPLEMENTADO ─────────────────────────────────────
-    add_heading(doc, "3. O que Foi Implementado (v3.0)", 1)
+    add_heading(doc, "3. O que Foi Implementado (v3.1)", 1)
 
     add_heading(doc, "3.1 Módulos Funcionais", 2)
     add_table(doc,
@@ -290,6 +292,12 @@ def build_doc():
             ("Simulacoes sem Discord/Groq", "OK", "simulacoes.py", "28/33 cenarios validados"),
             ("Deploy Railway configurado", "OK", "Procfile + railway.toml", "restart on failure, healthcheck"),
             ("Fallback SSL corporativo", "OK", "scraper.py + tibia_api.py", "Funciona em redes com proxy"),
+            ("cloudscraper — bypass Cloudflare", "OK", "scraper.py", "Resolve desafio JS do Cloudflare automaticamente"),
+            ("URLs modernas do Rubinot", "OK", "scraper.py", "/characters?name= /guilds /highscores"),
+            ("get_news / get_online / get_guilds_list", "OK", "scraper.py", "Noticias, online e lista de guilds"),
+            ("wiki_scraper.py — wiki oficial", "OK", "wiki_scraper.py", "Scrape wiki.rubinot.com: hunts, quests, bosses"),
+            ("kb_extra.md no GitHub", "OK", "kb_extra.md", "271 linhas de KB extra: Soulpit, bosses, eventos, FAQ"),
+            ("Novos comandos v3.1", "OK", "bot.py", "/wiki /soulpit /task /eventos /calc /castle /noticias /online /guilds"),
         ],
         col_widths=[5, 2, 4, 6]
     )
@@ -664,6 +672,37 @@ def build_doc():
             "OK — Vai para o GitHub"
         ),
         (
+            "wiki_scraper.py",
+            "Scraper da wiki oficial do Rubinot (wiki.rubinot.com).",
+            [
+                "Nao usa Cloudflare agressivo — acessivel com requests normal",
+                "search_wiki(query) — busca paginas por termo, cache 1h",
+                "get_wiki_page(name) — busca pagina direta com fallback de URL, cache 2h",
+                "get_quest_info(quest) / get_boss_info(boss) / get_hunt_spot(spot)",
+                "get_linked_tasks() / get_soulpit_info() — paginas especificas",
+                "format_wiki_result(page) / format_search_results(results) — para Discord embeds",
+                "Usado pelos comandos: /wiki, /soulpit, /task, /eventos, /castle",
+            ],
+            "OK — Vai para o GitHub"
+        ),
+        (
+            "kb_extra.md",
+            "Base de conhecimento extra hospedada no GitHub — atualiza sem redeploy.",
+            [
+                "271 linhas de conteudo complementar a knowledge_base.py",
+                "Soulpit: guia completo com composicoes e estrategia",
+                "Linked Tasks: como funcionam, melhores por nivel, recompensas",
+                "Bosses detalhados: Orshabaal, Ferumbras, Gaz'haragoth, Pale Worm",
+                "Castle System: estrategia e composicoes de guild",
+                "Prestige Arena, Eventos, Battle Pass Season 4",
+                "Economia: Elias Tibiano, fragmentos, forge",
+                "Dicas avancadas por vocacao + itens de quest por nivel",
+                "FAQ com as duvidas mais comuns do servidor",
+                "Para ativar: KB_GITHUB_URL=https://raw.githubusercontent.com/DiOliveira011/Companion-Tibia/main/kb_extra.md",
+            ],
+            "OK — Vai para o GitHub (e deve ser editado diretamente la)"
+        ),
+        (
             "gerar_documentacao.py",
             "Script que gera este documento Word.",
             [
@@ -720,6 +759,15 @@ def build_doc():
             ("/limpar", "—", "Reseta historico de conversa do usuario", "memory.py"),
             ("/status", "—", "Status tecnico: latencia, modelo IA, caches, usuarios, KB", "Interno"),
             ("/recarregar_kb", "—", "Forca recarregamento da KB extra do GitHub", "kb_loader.py"),
+            ("/wiki", "busca", "Busca qualquer coisa na wiki oficial wiki.rubinot.com", "wiki_scraper.py"),
+            ("/soulpit", "—", "Guia completo do Soulpit: quando entrar, composicao, bonus EXP", "Wiki + IA + KB"),
+            ("/task", "criatura (opc)", "Linked Tasks: guia geral ou info de task especifica", "Wiki + IA + KB"),
+            ("/eventos", "—", "Eventos ativos, sazonais, Battle Pass e Castle", "Wiki + IA + KB"),
+            ("/calc", "nivel, alvo, exp/h", "Calculadora de EXP: quanto falta + tempo estimado com/sem stamina", "Formula Tibia"),
+            ("/castle", "—", "Castle System: como funciona, horarios, composicao, estrategia", "Wiki + IA + KB"),
+            ("/noticias", "—", "Ultimas noticias e patches do servidor Rubinot", "Scraper + IA"),
+            ("/online", "—", "Jogadores online agora no servidor", "Scraper Rubinot"),
+            ("/guilds", "—", "Lista todas as guilds ativas do servidor", "Scraper Rubinot"),
             ("@Companion Tibia", "mensagem livre", "Mencao no canal funciona como /ask", "IA + KB"),
         ],
         col_widths=[3, 3.5, 7.5, 3]
@@ -1148,11 +1196,110 @@ def build_doc():
 
     doc.add_page_break()
 
+    # ── SEÇÃO 17: KB NO GITHUB ───────────────────────────────────────────────
+    add_heading(doc, "17. KB no GitHub — Como funciona e como atualizar", 1)
+
+    add_paragraph(doc,
+        "A partir da v3.1, o Companion Tibia suporta uma base de conhecimento extra hospedada no GitHub. "
+        "Isso permite atualizar o conteudo do bot sem precisar fazer redeploy no Railway.",
+        size=10)
+
+    doc.add_paragraph()
+    add_heading(doc, "17.1 Como ativar", 2)
+    add_paragraph(doc, "1. O arquivo kb_extra.md ja esta no repositorio GitHub:", size=10)
+    add_code_block(doc, "https://raw.githubusercontent.com/DiOliveira011/Companion-Tibia/main/kb_extra.md")
+    add_paragraph(doc, "2. No Railway, adicione a variavel de ambiente:", size=10)
+    add_code_block(doc, "KB_GITHUB_URL = https://raw.githubusercontent.com/DiOliveira011/Companion-Tibia/main/kb_extra.md")
+    add_paragraph(doc, "3. O bot recarrega automaticamente a cada 30 minutos. Para forcar: use /recarregar_kb no Discord.", size=10)
+
+    doc.add_paragraph()
+    add_heading(doc, "17.2 Como atualizar o conteudo", 2)
+    steps_kb = [
+        "Acesse github.com/DiOliveira011/Companion-Tibia",
+        "Clique em kb_extra.md",
+        "Clique no icone de lapis (Edit this file)",
+        "Faca as alteracoes desejadas (novo boss, evento, patch notes, etc.)",
+        "Clique em 'Commit changes'",
+        "Em ate 30 minutos o bot ja usa o novo conteudo — sem redeploy!",
+    ]
+    for i, s in enumerate(steps_kb, 1):
+        add_numbered(doc, f"{i}. {s}")
+
+    doc.add_paragraph()
+    add_heading(doc, "17.3 O que colocar na KB extra vs knowledge_base.py", 2)
+    add_table(doc,
+        ["Tipo de conteudo", "Onde colocar", "Motivo"],
+        [
+            ("Mecanicas de vocacoes, spells, builds", "knowledge_base.py", "Conteudo estavel, raramente muda"),
+            ("Guias de hunt por vocacao", "knowledge_base.py", "Informacao permanente do jogo"),
+            ("Tabela de imbuements", "knowledge_base.py", "Muda apenas com grandes patches"),
+            ("Eventos e Battle Pass (sazonais)", "kb_extra.md no GitHub", "Muda a cada season/evento"),
+            ("Novos bosses adicionados ao servidor", "kb_extra.md no GitHub", "Novidades sem redeploy"),
+            ("Patch notes e mudancas recentes", "kb_extra.md no GitHub", "Atualiza rapido pelo GitHub"),
+            ("Precos de mercado / economia atual", "kb_extra.md no GitHub", "Flutua frequentemente"),
+            ("FAQ — duvidas da galera no Discord", "kb_extra.md no GitHub", "Acumula naturalmente"),
+        ],
+        col_widths=[5.5, 4, 7.5]
+    )
+
+    doc.add_paragraph()
+    add_heading(doc, "17.4 Conteudo atual da KB extra (kb_extra.md)", 2)
+    add_table(doc,
+        ["Secao", "Conteudo"],
+        [
+            ("Soulpit", "Guia completo: o que e, bonus EXP, composicoes por nivel, dicas"),
+            ("Linked Tasks", "Como funcionam, melhores por nivel, recompensas, dica de uso"),
+            ("Bosses", "Orshabaal, Ferumbras, Gaz'haragoth, Pale Worm — nivel, composicao, estrategia"),
+            ("Castle System", "Mecanica, horarios, composicao ideal, estrategia para ganhar"),
+            ("Prestige Arena", "O que e, modos, recompensas"),
+            ("Eventos e Battle Pass", "Double EXP, Season 4 2026, dicas para maximizar pontos"),
+            ("Economia", "Elias Tibiano (dica do Golden Mug), fragmentos de forge, quando usar forge"),
+            ("Dicas avancadas por vocacao", "Segredos e combos de EK, RP, ED, MS e Monk"),
+            ("Itens de quest por nivel", "Tabela: Cobra/Falcon/Naga items e como obter"),
+            ("Config recomendada do RTC", "HuntFinder, Equipment Preset, Bestiary Tracker"),
+            ("FAQ", "12 perguntas frequentes da galera do servidor"),
+        ],
+        col_widths=[4, 13]
+    )
+
+    doc.add_page_break()
+
+    # ── SEÇÃO 18: HISTÓRICO DE COMMITS ───────────────────────────────────────
+    add_heading(doc, "18. Historico de Commits e Versoes", 1)
+
+    add_table(doc,
+        ["Commit / Versao", "Data", "O que foi feito"],
+        [
+            ("v3.0 — commit inicial\nfeat: Companion Tibia v3.0",
+             datetime.date.today().strftime("%d/%m/%Y"),
+             "Bot completo: 24 comandos, memory.py, ai_client.py, youtube_api.py, "
+             "forum_scraper.py, kb_loader.py, scraper expandido, simulacoes 28/33 passando"),
+            ("feat: KB extra GitHub\nebf72e9",
+             datetime.date.today().strftime("%d/%m/%Y"),
+             "Criacao do kb_extra.md com 271 linhas: Soulpit, bosses, Castle, eventos, dicas avancadas, FAQ"),
+            ("feat: wiki scraper + 6 comandos\n9f52a8f",
+             datetime.date.today().strftime("%d/%m/%Y"),
+             "wiki_scraper.py + /wiki /soulpit /task /eventos /calc /castle. "
+             "URLs modernas Rubinot. cloudscraper para bypass Cloudflare."),
+        ],
+        col_widths=[5, 2.5, 9.5]
+    )
+
+    doc.add_paragraph()
+    add_heading(doc, "Repositorio GitHub", 2)
+    add_code_block(doc, "https://github.com/DiOliveira011/Companion-Tibia")
+    add_paragraph(doc,
+        "Para contribuir: faca um fork, edite o que quiser e abra um Pull Request. "
+        "Para atualizar a KB rapidamente: edite kb_extra.md diretamente no GitHub.",
+        size=10)
+
+    doc.add_page_break()
+
     # ── RODAPÉ ───────────────────────────────────────────────────────────────
     final = doc.add_paragraph()
     final.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = final.add_run(
-        f"Companion Tibia — Documentacao Tecnica v3.0 — {datetime.date.today().strftime('%d/%m/%Y')}\n"
+        f"Companion Tibia — Documentacao Tecnica v3.1 — {datetime.date.today().strftime('%d/%m/%Y')}\n"
         "Criado por Soneca & Shawnks | Rubinot Open PvP"
     )
     run.font.size = Pt(9)
