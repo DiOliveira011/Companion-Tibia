@@ -47,6 +47,11 @@ from ai_client import chat as ai_chat, status_text as ai_status, CLAUDE_AVAILABL
 from youtube_api import search_hunt_videos, format_videos_field, AVAILABLE as YT_AVAILABLE
 from forum_scraper import search_forum, format_forum_results
 from kb_loader import build_full_system_prompt, reload_kb, kb_status
+from wiki_scraper import (
+    search_wiki, get_wiki_page, get_quest_info, get_boss_info,
+    get_linked_tasks, get_soulpit_info,
+    format_wiki_result, format_search_results,
+)
 
 # ── Configuração ──────────────────────────────────────────────────────────────
 
@@ -670,6 +675,166 @@ async def status_cmd(interaction: discord.Interaction):
     )
     embed = make_embed("⚙️ Status — Companion Tibia v3.0", desc, color=0x1ABC9C)
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@tree.command(name="wiki", description="Busca informações na wiki oficial do Rubinot")
+@app_commands.describe(busca="O que buscar. Ex: Soulpit, Linked Tasks, Soul War Quest")
+async def wiki_cmd(interaction: discord.Interaction, busca: str):
+    await interaction.response.defer()
+    # Tenta página direta primeiro, depois busca
+    page = await run(get_wiki_page, busca)
+    if page:
+        desc = format_wiki_result(page)
+        embed = make_embed(f"📖 Wiki — {page['title']}", desc, color=0x3498DB, url=page.get("url"))
+        embed.set_footer(text=f"{FOOTER_TEXT} • Fonte: wiki.rubinot.com")
+        await interaction.followup.send(embed=embed)
+        return
+
+    results = await run(search_wiki, busca)
+    if results:
+        desc = format_search_results(results)
+        embed = make_embed(f"🔍 Wiki — Resultados para: {busca}", desc, color=0x3498DB)
+        embed.set_footer(text=f"{FOOTER_TEXT} • Fonte: wiki.rubinot.com")
+        await interaction.followup.send(embed=embed)
+        return
+
+    # Fallback: IA responde com KB
+    answer, model = await run(ask_ai, interaction.user.id,
+        f"Me dê informações sobre '{busca}' no Rubinot com base no que você sabe.")
+    embed = make_embed(f"📖 {busca}", answer, model=model)
+    await interaction.followup.send(embed=embed)
+
+
+@tree.command(name="soulpit", description="Guia completo do Soulpit — quando entrar, estratégia e composições")
+async def soulpit_cmd(interaction: discord.Interaction):
+    await interaction.response.defer()
+    page = await run(get_soulpit_info)
+    if page and page.get("full_text"):
+        desc = format_wiki_result(page)
+        embed = make_embed("🌀 Soulpit — Guia Completo", desc, color=0x8B0000, url=page.get("url"))
+        embed.set_footer(text=f"{FOOTER_TEXT} • Fonte: wiki.rubinot.com")
+    else:
+        answer, model = await run(ask_ai, interaction.user.id,
+            "Guia completo do Soulpit no Rubinot: o que é, quando entrar, bônus de EXP, "
+            "composição ideal, estratégia e dicas.")
+        embed = make_embed("🌀 Soulpit — Guia Completo", answer, color=0x8B0000, model=model)
+    await interaction.followup.send(embed=embed)
+
+
+@tree.command(name="task", description="Info sobre Linked Tasks do Rubinot")
+@app_commands.describe(criatura="Criatura/task específica (opcional). Deixe vazio para guia geral.")
+async def task_cmd(interaction: discord.Interaction, criatura: str = ""):
+    await interaction.response.defer()
+    if criatura:
+        answer, model = await run(ask_ai, interaction.user.id,
+            f"Info sobre a Linked Task de '{criatura}' no Rubinot: requisito, objetivo, "
+            f"recompensas, dica de estratégia.")
+        embed = make_embed(f"📋 Task — {criatura}", answer, color=0x27AE60, model=model)
+    else:
+        page = await run(get_linked_tasks)
+        if page and page.get("full_text"):
+            desc = format_wiki_result(page)
+            embed = make_embed("📋 Linked Tasks — Guia", desc, color=0x27AE60, url=page.get("url"))
+            embed.set_footer(text=f"{FOOTER_TEXT} • Fonte: wiki.rubinot.com")
+        else:
+            answer, model = await run(ask_ai, interaction.user.id,
+                "Guia das Linked Tasks do Rubinot: como funcionam, melhores por nível, recompensas.")
+            embed = make_embed("📋 Linked Tasks — Guia", answer, color=0x27AE60, model=model)
+    await interaction.followup.send(embed=embed)
+
+
+@tree.command(name="eventos", description="Eventos ativos e próximos do Rubinot")
+async def eventos_cmd(interaction: discord.Interaction):
+    await interaction.response.defer()
+    # Tenta buscar da wiki e da KB extra
+    page = await run(get_wiki_page, "Events")
+    if not page:
+        page = await run(get_wiki_page, "Eventos")
+    if page and len(page.get("full_text", "")) > 100:
+        desc = format_wiki_result(page)
+        embed = make_embed("🎉 Eventos — Rubinot", desc, color=0xF39C12, url=page.get("url"))
+        embed.set_footer(text=f"{FOOTER_TEXT} • Fonte: wiki.rubinot.com")
+    else:
+        answer, model = await run(ask_ai, interaction.user.id,
+            "Quais os eventos ativos, sazonais e regulares do servidor Rubinot? "
+            "Inclua: Double EXP, Battle Pass, Castle System, eventos especiais e dicas para aproveitar cada um.")
+        embed = make_embed("🎉 Eventos — Rubinot", answer, color=0xF39C12, model=model)
+    await interaction.followup.send(embed=embed)
+
+
+@tree.command(name="calc", description="Calculadora de EXP — quanto falta para o próximo nível")
+@app_commands.describe(
+    nivel_atual="Seu nível atual",
+    nivel_alvo="Nível que quer alcançar",
+    exp_hora="EXP por hora na sua hunt atual (ex: 1500000 para 1.5M)"
+)
+async def calc_cmd(interaction: discord.Interaction, nivel_atual: int, nivel_alvo: int, exp_hora: int = 0):
+    await interaction.response.defer()
+
+    if nivel_alvo <= nivel_atual:
+        await interaction.followup.send("❌ O nível alvo precisa ser maior que o nível atual.", ephemeral=True)
+        return
+
+    # Fórmula de EXP do Tibia: EXP(n) = 50/3 * (n^3 - 6n^2 + 17n - 12)
+    def exp_para_nivel(n: int) -> int:
+        return max(0, int((50 / 3) * (n**3 - 6 * n**2 + 17 * n - 12)))
+
+    exp_atual = exp_para_nivel(nivel_atual)
+    exp_alvo  = exp_para_nivel(nivel_alvo)
+    exp_falta = exp_alvo - exp_atual
+
+    lines = [
+        f"⚡ **Nível atual:** {nivel_atual}",
+        f"🎯 **Nível alvo:** {nivel_alvo}",
+        f"📊 **EXP necessária:** {exp_falta:,}",
+    ]
+
+    if exp_hora > 0:
+        horas = exp_falta / exp_hora
+        dias  = horas / 24
+        horas_int = int(horas)
+        minutos   = int((horas - horas_int) * 60)
+        lines.append(f"⏱️ **Com {exp_hora:,} EXP/h:** {horas_int}h {minutos}min ({dias:.1f} dias)")
+
+        # Ajuste com stamina (2h premium/dia = +50% EXP)
+        horas_stamina = exp_falta / (exp_hora * 1.5)
+        lines.append(f"💚 **Com stamina premium** (2h/dia 150%): {horas_stamina:.1f}h ({horas_stamina/24:.1f} dias)")
+
+    if nivel_alvo - nivel_atual == 1:
+        # Dica específica para 1 level
+        pergunta = (
+            f"Em 1 linha: qual a melhor hunt para subir do nível {nivel_atual} para {nivel_alvo} rápido no Rubinot?"
+        )
+        dica, model = await run(ask_ai, interaction.user.id, pergunta)
+        lines.append(f"\n💡 **Dica:** {dica[:200]}")
+    else:
+        model = None
+
+    embed = make_embed(
+        f"🧮 Calc EXP — {nivel_atual} → {nivel_alvo}",
+        "\n".join(lines),
+        color=0x1ABC9C,
+        model=model,
+    )
+    await interaction.followup.send(embed=embed)
+
+
+@tree.command(name="castle", description="Info sobre o Castle System do Rubinot")
+async def castle_cmd(interaction: discord.Interaction):
+    await interaction.response.defer()
+    page = await run(get_wiki_page, "Castle_System")
+    if not page:
+        page = await run(get_wiki_page, "Castle")
+    if page and len(page.get("full_text", "")) > 100:
+        desc = format_wiki_result(page)
+        embed = make_embed("🏯 Castle System", desc, color=0xE74C3C, url=page.get("url"))
+        embed.set_footer(text=f"{FOOTER_TEXT} • Fonte: wiki.rubinot.com")
+    else:
+        answer, model = await run(ask_ai, interaction.user.id,
+            "Explique o Castle System do Rubinot: como funciona, horários, "
+            "composição ideal, recompensas e estratégia para ganhar.")
+        embed = make_embed("🏯 Castle System", answer, color=0xE74C3C, model=model)
+    await interaction.followup.send(embed=embed)
 
 
 @tree.command(name="recarregar_kb", description="[Admin] Recarrega a KB extra do GitHub")
